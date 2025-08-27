@@ -6,17 +6,32 @@ on:
       test_scenario:
         description: 'Test scenario to run'
         required: true
-        default: 'basic'
+        default: 'with_current_release'
         type: choice
         options:
-          - basic
           - with_current_release
+          - basic
           - multiple_products
           - error_handling
+  push:
+    branches: [main]
+    paths:
+      - 'action.yml'
+      - '*.sh'
+      - '.github/workflows/integration.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'action.yml'
+      - '*.sh'
+      - '.github/workflows/integration.yml'
+  schedule:
+    # Run every Monday at 9 AM UTC to catch any external API changes
+    - cron: '0 9 * * 1'
 
 jobs:
   integration-test:
-    name: Integration Test - ${{ inputs.test_scenario }}
+    name: Integration Test - ${{ inputs.test_scenario || 'auto' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -83,17 +98,8 @@ jobs:
           
           echo "✅ Product cleanup completed"
 
-      - name: Test Basic Deployment
-        if: inputs.test_scenario == 'basic'
-        uses: ./
-        with:
-          media_uuid: '8cc4a4e0-102b-4266-a81e-4aef9ff5713c'
-          product_uuids: 'c995fb9c-70cc-4de2-b34f-6ce9d331705a'
-          set_as_current_release: 'false'
-          surecart_api_token: ${{ secrets.SURECART_API_TOKEN }}
-
       - name: Test with Current Release Setting
-        if: inputs.test_scenario == 'with_current_release'
+        if: inputs.test_scenario == 'with_current_release' || inputs.test_scenario == null
         uses: ./
         with:
           media_uuid: '8cc4a4e0-102b-4266-a81e-4aef9ff5713c'
@@ -141,7 +147,7 @@ jobs:
         run: |
           echo "## Integration Test Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Test Scenario:** ${{ inputs.test_scenario }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Test Scenario:** ${{ inputs.test_scenario || 'basic (auto)' }}" >> $GITHUB_STEP_SUMMARY
           echo "**Status:** ${{ needs.integration-test.result }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           if [ "${{ needs.integration-test.result }}" == "success" ]; then
