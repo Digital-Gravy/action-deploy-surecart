@@ -1,5 +1,7 @@
 #!/bin/bash
 # Creates a new download object in SureCart.
+# On success, it prints ONLY the new download ID to stdout.
+# All other logging is sent to stderr to not interfere with output capturing.
 set -e
 
 # --- Main Logic ---
@@ -23,9 +25,9 @@ json_payload=$(printf '{
 http_status=$(cat "$HTTP_STATUS_FILE")
 response_body=$(cat "$RESPONSE_BODY_FILE")
 
-# Always output the response body for debugging.
-echo "API Response Body:"
-echo "$response_body"
+# Always output the response body for debugging to stderr.
+echo "API Response Body:" >&2
+echo "$response_body" >&2
 
 # --- Error Handling ---
 if [[ $http_status -lt 200 || $http_status -ge 300 ]]; then
@@ -39,7 +41,7 @@ if [[ $http_status -lt 200 || $http_status -ge 300 ]]; then
     full_error="API request failed with HTTP status code $http_status. Reason: $error_message"
   fi
   
-  echo "::error::$full_error"
+  echo "::error::$full_error" >&2
   echo "### :x: Deployment Failed" >> "$GITHUB_STEP_SUMMARY"
   echo "" >> "$GITHUB_STEP_SUMMARY"
   echo "**Error:** $full_error" >> "$GITHUB_STEP_SUMMARY"
@@ -52,9 +54,9 @@ fi
 
 # --- Success ---
 download_id=$(echo "$response_body" | jq -r '.id')
-echo "Created download with ID: ${download_id}"
-echo "DOWNLOAD_ID=${download_id}" >> "$GITHUB_ENV"
+echo "Created download with ID: ${download_id}" >&2
 
+# Report success to the job summary.
 echo "### :white_check_mark: Deployment Succeeded" >> "$GITHUB_STEP_SUMMARY"
 echo "" >> "$GITHUB_STEP_SUMMARY"
 echo "Successfully created download with HTTP status $http_status." >> "$GITHUB_STEP_SUMMARY"
@@ -62,4 +64,7 @@ echo '```json' >> "$GITHUB_STEP_SUMMARY"
 echo "$response_body" >> "$GITHUB_STEP_SUMMARY"
 echo "" >> "$GITHUB_STEP_SUMMARY"
 echo '```' >> "$GITHUB_STEP_SUMMARY"
-echo "Successfully created download. HTTP status: $http_status"
+echo "Successfully created download. HTTP status: $http_status" >&2
+
+# Print the download_id to stdout to be captured by the calling script.
+echo "$download_id"

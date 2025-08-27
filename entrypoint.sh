@@ -19,17 +19,18 @@ IFS=',' read -r -a product_uuids <<< "${INPUT_PRODUCT_UUIDS// /}"
 for product_uuid in "${product_uuids[@]}"; do
   echo "--- Starting deployment for product: ${product_uuid} ---"
 
-  # Run the create-download script, passing variables as env vars.
-  # The script will export DOWNLOAD_ID to the environment for the next step.
+  # Run the create-download script, passing variables as env vars,
+  # and capture its stdout (the new download_id) into a variable.
   export SURECART_API_TOKEN="${INPUT_SURECART_API_TOKEN}"
   export MEDIA_UUID="${INPUT_MEDIA_UUID}"
   export PRODUCT_UUID="${product_uuid}"
   
-  ./create-download.sh
+  new_download_id=$(./create-download.sh)
 
   # If the set_as_current_release flag is true, run the next step.
   if [[ "${INPUT_SET_AS_CURRENT_RELEASE}" == "true" ]]; then
-    # The DOWNLOAD_ID is already in the environment from the previous step.
+    # Pass the captured download_id to the set-release script.
+    export DOWNLOAD_ID="${new_download_id}"
     ./set-release.sh
   fi
 
