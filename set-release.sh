@@ -25,13 +25,15 @@ echo "$response_body" >&2
 if [[ $(echo "$response_body" | jq -r '.current_release_download') == "null" ]]; then
   full_error="API call succeeded, but 'current_release_download' is still null. The update was not applied."
   echo "::error::$full_error"
-  echo "### :x: Failed to Set Current Release" >> "$GITHUB_STEP_SUMMARY"
-  echo "" >> "$GITHUB_STEP_SUMMARY"
-  echo "**Error:** $full_error" >> "$GITHUB_STEP_SUMMARY"
-  echo '```json' >> "$GITHUB_STEP_SUMMARY"
-  echo "$response_body" >> "$GITHUB_STEP_SUMMARY"
-  echo "" >> "$GITHUB_STEP_SUMMARY"
-  echo '```' >> "$GITHUB_STEP_SUMMARY"
+  {
+    echo "### :x: Failed to Set Current Release"
+    echo ""
+    echo "**Error:** $full_error"
+    echo '```json'
+    echo "$response_body"
+    echo ""
+    echo '```'
+  } >> "$GITHUB_STEP_SUMMARY"
   exit 1
 fi
 
@@ -39,22 +41,26 @@ if [[ $http_status -lt 200 || $http_status -ge 300 ]]; then
   error_message=$(echo "$response_body" | jq -r '.message')
   full_error="API request failed with HTTP status code $http_status. Reason: $error_message"
   echo "::error::$full_error" >&2
-  echo "### :x: Failed to Set Current Release" >> "$GITHUB_STEP_SUMMARY"
-  echo "" >> "$GITHUB_STEP_SUMMARY"
-  echo "**Error:** $full_error" >> "$GITHUB_STEP_SUMMARY"
-  echo '```json' >> "$GITHUB_STEP_SUMMARY"
-  echo "$response_body" >> "$GITHUB_STEP_SUMMARY"
-  echo "" >> "$GITHUB_STEP_SUMMARY"
-  echo '```' >> "$GITHUB_STEP_SUMMARY"
+  {
+    echo "### :x: Failed to Set Current Release"
+    echo ""
+    echo "**Error:** $full_error"
+    echo '```json'
+    echo "$response_body"
+    echo ""
+    echo '```'
+  } >> "$GITHUB_STEP_SUMMARY"
   exit 1
 fi
 
 # --- Success ---
-echo "### :white_check_mark: Current Release Set" >> "$GITHUB_STEP_SUMMARY"
-echo "" >> "$GITHUB_STEP_SUMMARY"
-echo "Successfully set current release with HTTP status $http_status." >> "$GITHUB_STEP_SUMMARY"
-echo '```json' >> "$GITHUB_STEP_SUMMARY"
-echo "$response_body" >> "$GITHUB_STEP_SUMMARY"
-echo "" >> "$GITHUB_STEP_SUMMARY"
-echo '```' >> "$GITHUB_STEP_SUMMARY"
+{
+  echo "### :white_check_mark: Current Release Set"
+  echo ""
+  echo "Successfully set current release with HTTP status $http_status."
+  echo '```json'
+  echo "$response_body"
+  echo ""
+  echo '```'
+} >> "$GITHUB_STEP_SUMMARY"
 echo "Successfully set current release with HTTP status: $http_status" >&2

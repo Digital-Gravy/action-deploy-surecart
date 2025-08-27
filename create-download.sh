@@ -42,13 +42,15 @@ if [[ $http_status -lt 200 || $http_status -ge 300 ]]; then
   fi
   
   echo "::error::$full_error" >&2
-  echo "### :x: Deployment Failed" >> "$GITHUB_STEP_SUMMARY"
-  echo "" >> "$GITHUB_STEP_SUMMARY"
-  echo "**Error:** $full_error" >> "$GITHUB_STEP_SUMMARY"
-  echo '```json' >> "$GITHUB_STEP_SUMMARY"
-  echo "$response_body" >> "$GITHUB_STEP_SUMMARY"
-  echo "" >> "$GITHUB_STEP_SUMMARY"
-  echo '```' >> "$GITHUB_STEP_SUMMARY"
+  {
+    echo "### :x: Deployment Failed"
+    echo ""
+    echo "**Error:** $full_error"
+    echo '```json'
+    echo "$response_body"
+    echo ""
+    echo '```'
+  } >> "$GITHUB_STEP_SUMMARY"
   exit 1
 fi
 
@@ -57,13 +59,15 @@ download_id=$(echo "$response_body" | jq -r '.id')
 echo "Created download with ID: ${download_id}" >&2
 
 # Report success to the job summary.
-echo "### :white_check_mark: Deployment Succeeded" >> "$GITHUB_STEP_SUMMARY"
-echo "" >> "$GITHUB_STEP_SUMMARY"
-echo "Successfully created download with HTTP status $http_status." >> "$GITHUB_STEP_SUMMARY"
-echo '```json' >> "$GITHUB_STEP_SUMMARY"
-echo "$response_body" >> "$GITHUB_STEP_SUMMARY"
-echo "" >> "$GITHUB_STEP_SUMMARY"
-echo '```' >> "$GITHUB_STEP_SUMMARY"
+{
+  echo "### :white_check_mark: Deployment Succeeded"
+  echo ""
+  echo "Successfully created download with HTTP status $http_status."
+  echo '```json'
+  echo "$response_body"
+  echo ""
+  echo '```'
+} >> "$GITHUB_STEP_SUMMARY"
 echo "Successfully created download. HTTP status: $http_status" >&2
 
 # Print the download_id to stdout to be captured by the calling script.
