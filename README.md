@@ -64,6 +64,28 @@ jobs:
 
 Contributions are welcome! Please feel free to submit a pull request.
 
+### Testing Locally
+
+To run the tests locally, you'll need to install the `bats-core` test runner and clone the necessary helper libraries.
+
+1.  **Install `bats-core`:**
+    ```bash
+    brew install bats-core
+    ```
+
+2.  **Clone Helper Libraries:**
+    ```bash
+    cd tests
+    git clone https://github.com/bats-core/bats-support.git
+    git clone https://github.com/bats-core/bats-assert.git
+    cd .. 
+    ```
+
+3.  **Run the Tests:**
+    ```bash
+    bats tests
+    ```
+
 ## License
 
 This project is licensed under the terms of the GPLv3 license.

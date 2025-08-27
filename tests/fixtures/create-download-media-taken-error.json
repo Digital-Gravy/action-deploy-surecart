@@ -1,0 +1,1 @@
+{"http_status":"unprocessable_entity","type":"invalid","code":"download.invalid","message":"Failed to save download","validation_errors":[{"attribute":"media_id","type":"taken","code":"download.media_id.taken","options":{"allow_nil":true,"value":"8cc4a4e0-102b-4266-a81e-4aef9ff5713c"},"message":"Media has already been taken"}]}

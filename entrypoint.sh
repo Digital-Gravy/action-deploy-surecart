@@ -1,6 +1,9 @@
 #!/bin/bash
 # This is the main entrypoint for the composite action.
 set -e
+# Add the action's directory to the PATH.
+# This allows scripts to call each other without using relative paths.
+export PATH="${GITHUB_ACTION_PATH}:${PATH}"
 
 # Change to the action's directory to ensure scripts can be found.
 cd "${GITHUB_ACTION_PATH}"

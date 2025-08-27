@@ -9,35 +9,32 @@ set -e
 RESPONSE_BODY_FILE=$(mktemp)
 HTTP_STATUS_FILE=$(mktemp)
 export RESPONSE_BODY_FILE HTTP_STATUS_FILE
+            
+# Use an environment variable to allow for a mock API client in tests.
+api_client="${SURECART_API_CLIENT_PATH:-$(dirname "$0")/surecart-api.sh}"
 
-# Construct the JSON payload for the create download request.
 json_payload=$(printf '{
   "download": {
     "product": "%s",
     "media_id": "%s"
   }
 }' "$PRODUCT_UUID" "$MEDIA_UUID")
-
-# Call the SureCart API to create the download.
-"$(dirname "$0")/surecart-api.sh" "POST" "/v1/downloads" "$json_payload"
+"$api_client" "POST" "/v1/downloads" "$json_payload"
 
 # Read the results back from the temporary files.
 http_status=$(cat "$HTTP_STATUS_FILE")
 response_body=$(cat "$RESPONSE_BODY_FILE")
-
-# Always output the response body for debugging to stderr.
-echo "API Response Body:" >&2
-echo "$response_body" >&2
-
+            
 # --- Error Handling ---
 if [[ $http_status -lt 200 || $http_status -ge 300 ]]; then
-  specific_error_message=$(echo "$response_body" | jq -r '.validation_errors[0].message' 2>/dev/null)
+  # Use `|| echo ""` to prevent `jq` from exiting the script if the path doesn't exist.
+  specific_error_message=$(jq -r '.validation_errors[0].message' <<< "$response_body" 2>/dev/null || echo "")
   
   if [[ "$specific_error_message" == "Media has already been taken" ]]; then
-    media_id_from_error=$(echo "$response_body" | jq -r '.validation_errors[0].options.value')
+    media_id_from_error=$(jq -r '.validation_errors[0].options.value' <<< "$response_body")
     full_error="Deployment failed. The media file (UUID: ${media_id_from_error}) has already been used to create a download. Each release requires a new, unique media file to be uploaded first."
   else
-    error_message=$(echo "$response_body" | jq -r '.message')
+    error_message=$(jq -r '.message' <<< "$response_body" 2>/dev/null || echo "")
     full_error="API request failed with HTTP status code $http_status. Reason: $error_message"
   fi
   
@@ -54,11 +51,8 @@ if [[ $http_status -lt 200 || $http_status -ge 300 ]]; then
   exit 1
 fi
 
-# --- Success ---
+# --- Success Case ---
 download_id=$(echo "$response_body" | jq -r '.id')
-echo "Created download with ID: ${download_id}" >&2
-
-# Report success to the job summary.
 {
   echo "### :white_check_mark: Deployment Succeeded"
   echo ""
@@ -68,7 +62,6 @@ echo "Created download with ID: ${download_id}" >&2
   echo ""
   echo '```'
 } >> "$GITHUB_STEP_SUMMARY"
-echo "Successfully created download. HTTP status: $http_status" >&2
 
-# Print the download_id to stdout to be captured by the calling script.
+# On success, print ONLY the download ID to stdout.
 echo "$download_id"
