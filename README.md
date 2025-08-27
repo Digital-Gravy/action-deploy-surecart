@@ -100,8 +100,8 @@ Integration tests verify the action works end-to-end with the real SureCart API.
    - Select "Integration Tests" workflow
    - Click "Run workflow"
    - Choose a test scenario:
-     - `basic`: Creates a download without setting as current release
      - `with_current_release`: Creates a download and sets it as current release
+     - `basic_without_current_release`: Creates a download without setting as current release
      - `multiple_products`: Tests deployment to multiple products
      - `error_handling`: Tests error handling with invalid inputs
 
