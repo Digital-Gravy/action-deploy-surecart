@@ -1,0 +1,92 @@
+name: Integration Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_scenario:
+        description: 'Test scenario to run'
+        required: true
+        default: 'basic'
+        type: choice
+        options:
+          - basic
+          - with_current_release
+          - multiple_products
+          - error_handling
+
+jobs:
+  integration-test:
+    name: Integration Test - ${{ inputs.test_scenario }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Test Basic Deployment
+        if: inputs.test_scenario == 'basic'
+        uses: ./
+        with:
+          media_uuid: '8cc4a4e0-102b-4266-a81e-4aef9ff5713c'
+          product_uuids: 'c995fb9c-70cc-4de2-b34f-6ce9d331705a'
+          set_as_current_release: 'false'
+          surecart_api_token: ${{ secrets.SURECART_API_TOKEN }}
+
+      - name: Test with Current Release Setting
+        if: inputs.test_scenario == 'with_current_release'
+        uses: ./
+        with:
+          media_uuid: '8cc4a4e0-102b-4266-a81e-4aef9ff5713c'
+          product_uuids: 'c995fb9c-70cc-4de2-b34f-6ce9d331705a'
+          set_as_current_release: 'true'
+          surecart_api_token: ${{ secrets.SURECART_API_TOKEN }}
+
+      - name: Test Multiple Products
+        if: inputs.test_scenario == 'multiple_products'
+        uses: ./
+        with:
+          media_uuid: '8cc4a4e0-102b-4266-a81e-4aef9ff5713c'
+          product_uuids: 'c995fb9c-70cc-4de2-b34f-6ce9d331705a, c995fb9c-70cc-4de2-b34f-6ce9d331705a'
+          set_as_current_release: 'false'
+          surecart_api_token: ${{ secrets.SURECART_API_TOKEN }}
+
+      - name: Test Error Handling (Invalid Media UUID)
+        if: inputs.test_scenario == 'error_handling'
+        uses: ./
+        id: error-test
+        continue-on-error: true
+        with:
+          media_uuid: 'invalid-uuid-12345'
+          product_uuids: 'c995fb9c-70cc-4de2-b34f-6ce9d331705a'
+          set_as_current_release: 'false'
+          surecart_api_token: ${{ secrets.SURECART_API_TOKEN }}
+
+      - name: Verify Error Test Failed as Expected
+        if: inputs.test_scenario == 'error_handling'
+        run: |
+          if [ "${{ steps.error-test.outcome }}" != "failure" ]; then
+            echo "::error::Expected the error test to fail, but it succeeded"
+            exit 1
+          else
+            echo "✅ Error handling test failed as expected"
+          fi
+
+  post-test-cleanup:
+    name: Post-Test Information
+    runs-on: ubuntu-latest
+    needs: integration-test
+    if: always()
+    steps:
+      - name: Integration Test Results
+        run: |
+          echo "## Integration Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Test Scenario:** ${{ inputs.test_scenario }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ${{ needs.integration-test.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ needs.integration-test.result }}" == "success" ]; then
+            echo "✅ Integration test passed successfully!" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Integration test failed. Check the logs above for details." >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Note:** These tests use real API calls to SureCart." >> $GITHUB_STEP_SUMMARY

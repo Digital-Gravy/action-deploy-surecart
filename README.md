@@ -86,6 +86,32 @@ To run the tests locally, you'll need to install the `bats-core` test runner and
     bats tests
     ```
 
+## Integration Testing
+
+Integration tests verify the action works end-to-end with the real SureCart API. These tests are run manually to avoid consuming API quota on every commit.
+
+### Running Integration Tests
+
+1. **Set up Repository Secrets:**
+   - `SURECART_API_TOKEN`: Your SureCart API token
+
+2. **Run Tests Manually:**
+   - Go to the Actions tab in your GitHub repository
+   - Select "Integration Tests" workflow
+   - Click "Run workflow"
+   - Choose a test scenario:
+     - `basic`: Creates a download without setting as current release
+     - `with_current_release`: Creates a download and sets it as current release
+     - `multiple_products`: Tests deployment to multiple products
+     - `error_handling`: Tests error handling with invalid inputs
+
+3. **Test Data:**
+   The integration tests use predefined test data:
+   - Product UUID: `c995fb9c-70cc-4de2-b34f-6ce9d331705a`
+   - Media UUID: `8cc4a4e0-102b-4266-a81e-4aef9ff5713c`
+
+**Note:** These tests make real API calls to SureCart, so use them judiciously.
+
 ## License
 
 This project is licensed under the terms of the GPLv3 license.
