@@ -1,0 +1,69 @@
+# Deploy to SureCart Action
+
+[![CI](https://github.com/Digital-Gravy/action-deploy-surecart/actions/workflows/ci.yml/badge.svg)](https://github.com/Digital-Gravy/action-deploy-surecart/actions/workflows/ci.yml)
+
+This GitHub Action automates the process of deploying a new release to SureCart. It takes a media UUID and one or more product UUIDs, creates the necessary download objects, and optionally promotes the new download to be the current release for the specified products.
+
+## How It Works
+
+The action performs the following steps for each product UUID provided:
+1.  Calls the SureCart API to create a new "download" object, linking your product to the provided media file.
+2.  If `set_as_current_release` is `true`, it makes a second API call to update the product, setting the new download as the current release.
+
+## Inputs
+
+| Input                  | Required | Description                                                          | Default |
+| ---------------------- | :------: | -------------------------------------------------------------------- | ------- |
+| `media_uuid`           |  `true`  | The media UUID of the uploaded release file.                         |         |
+| `product_uuids`        |  `true`  | A comma-separated list of Product UUIDs to deploy to.                |         |
+| `set_as_current_release` | `false`  | Set this download as the current release for the product(s).         | `false` |
+| `surecart_api_token`   |  `true`  | The SureCart API token for authentication.                           |         |
+
+## Usage
+
+Here is an example of how to use this action in your own workflow. This workflow is triggered manually and prompts for the necessary inputs.
+
+```yaml
+name: Deploy New Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      media_uuid:
+        description: 'The media UUID of the uploaded release file.'
+        required: true
+      product_uuids:
+        description: 'A comma-separated list of Product UUIDs to deploy to.'
+        required: true
+        default: 'product-uuid-1, product-uuid-2'
+      set_as_current_release:
+        description: 'Set this download as the current release for the product(s).'
+        type: boolean
+        default: true
+
+jobs:
+  deploy:
+    name: Deploy to SureCart
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run SureCart Deploy Action
+        # It's recommended to pin this to a specific version tag (e.g., @v1) for production workflows.
+        uses: Digital-Gravy/action-deploy-surecart@main
+        with:
+          media_uuid: ${{ inputs.media_uuid }}
+          product_uuids: ${{ inputs.product_uuids }}
+          set_as_current_release: ${{ inputs.set_as_current_release }}
+          surecart_api_token: ${{ secrets.SURECART_API_TOKEN }}
+```
+
+### Secrets
+
+-   `SURECART_API_TOKEN`: You must add your SureCart API token as a secret in your repository's settings under `Settings` > `Secrets and variables` > `Actions`.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a pull request.
+
+## License
+
+This project is licensed under the terms of the GPLv3 license.

@@ -1,0 +1,30 @@
+name: 'Deploy to SureCart'
+description: 'Creates a new download in SureCart and optionally sets it as the current release for one or more products.'
+author: 'Matteo Greco <matteo@digitalgravy.co>'
+
+inputs:
+  media_uuid:
+    description: 'The media UUID of the uploaded release file.'
+    required: true
+  product_uuids:
+    description: 'A comma-separated list of Product UUIDs to deploy to.'
+    required: true
+  set_as_current_release:
+    description: 'Set this download as the current release for the product(s).'
+    required: false
+    default: 'false'
+  surecart_api_token:
+    description: 'The SureCart API token for authentication.'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Run Deploy Action
+      run: ${{ github.action_path }}/entrypoint.sh
+      shell: bash
+      env:
+        INPUT_MEDIA_UUID: ${{ inputs.media_uuid }}
+        INPUT_PRODUCT_UUIDS: ${{ inputs.product_uuids }}
+        INPUT_SET_AS_CURRENT_RELEASE: ${{ inputs.set_as_current_release }}
+        INPUT_SURECART_API_TOKEN: ${{ inputs.surecart_api_token }}
