@@ -32,5 +32,10 @@ jobs:
         with:
           bats-version: 1.10.0
 
+      - name: Setup Bats helper libraries
+        run: |
+          git clone https://github.com/bats-core/bats-support.git tests/bats-support
+          git clone https://github.com/bats-core/bats-assert.git tests/bats-assert
+
       - name: Run tests
         run: bats tests
