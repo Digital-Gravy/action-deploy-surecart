@@ -22,6 +22,45 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Clean Product State Before Test
+        run: |
+          echo "🧹 Cleaning product state before test..."
+          
+          PRODUCT_UUID="c995fb9c-70cc-4de2-b34f-6ce9d331705a"
+          
+          # First, clear the current_release_download
+          echo "Clearing current release download..."
+          curl --fail-with-body --silent --show-error \
+            --request PATCH \
+            --url "https://api.surecart.com/v1/products/${PRODUCT_UUID}" \
+            --header 'Accept: application/json' \
+            --header "Authorization: Bearer ${{ secrets.SURECART_API_TOKEN }}" \
+            --header 'Content-Type: application/json' \
+            --data "{\"product\":{\"id\":\"${PRODUCT_UUID}\",\"current_release_download\":null}}" \
+            || echo "Failed to clear current release download (may already be null)"
+          
+          # Get all downloads for this product
+          echo "Fetching existing downloads..."
+          DOWNLOADS_RESPONSE=$(curl --fail-with-body --silent \
+            --url "https://api.surecart.com/v1/downloads?product=${PRODUCT_UUID}" \
+            --header 'Accept: application/json' \
+            --header "Authorization: Bearer ${{ secrets.SURECART_API_TOKEN }}")
+          
+          # Extract download IDs and delete them
+          echo "$DOWNLOADS_RESPONSE" | jq -r '.data[]?.id // empty' | while read -r download_id; do
+            if [ -n "$download_id" ]; then
+              echo "Deleting download: $download_id"
+              curl --fail-with-body --silent --show-error \
+                --request DELETE \
+                --url "https://api.surecart.com/v1/downloads/${download_id}" \
+                --header 'Accept: application/json' \
+                --header "Authorization: Bearer ${{ secrets.SURECART_API_TOKEN }}" \
+                || echo "Failed to delete download: $download_id"
+            fi
+          done
+          
+          echo "✅ Product cleanup completed"
+
       - name: Test Basic Deployment
         if: inputs.test_scenario == 'basic'
         uses: ./
