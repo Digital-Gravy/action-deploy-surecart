@@ -27,22 +27,25 @@ jobs:
           echo "🧹 Cleaning product state before test..."
           
           PRODUCT_UUID="c995fb9c-70cc-4de2-b34f-6ce9d331705a"
+          TEST_MEDIA_UUID="8cc4a4e0-102b-4266-a81e-4aef9ff5713c"
           
-          # Get all downloads for this product first
-          echo "Fetching existing downloads..."
+          # Get all downloads for this specific test product using the correct API endpoint
+          echo "Fetching downloads for test product ${PRODUCT_UUID}..."
           DOWNLOADS_RESPONSE=$(curl --fail-with-body --silent \
-            --url "https://api.surecart.com/v1/downloads?product=${PRODUCT_UUID}" \
+            --url "https://api.surecart.com/v1/downloads?product_ids[]=${PRODUCT_UUID}" \
             --header 'Accept: application/json' \
             --header "Authorization: Bearer ${{ secrets.SURECART_API_TOKEN }}")
           
-          # Extract download IDs into an array
-          DOWNLOAD_IDS=($(echo "$DOWNLOADS_RESPONSE" | jq -r '.data[]?.id // empty'))
+          echo "Downloads response: $DOWNLOADS_RESPONSE"
           
-          if [ ${#DOWNLOAD_IDS[@]} -gt 0 ]; then
-            echo "Found ${#DOWNLOAD_IDS[@]} downloads to clean up"
-            
-            # First, clear the current_release_download on the product
-            echo "Clearing current release download on product..."
+          # Get all download IDs for this product - we want to delete ALL of them for a clean slate
+          ALL_DOWNLOAD_IDS=($(echo "$DOWNLOADS_RESPONSE" | jq -r '.data[]?.id // empty'))
+          
+          echo "Found ${#ALL_DOWNLOAD_IDS[@]} total downloads in test product to delete"
+          
+          if [ ${#ALL_DOWNLOAD_IDS[@]} -gt 0 ]; then
+            # First, clear the current_release_download on the product to avoid deletion conflicts
+            echo "Clearing current release download from product..."
             curl --fail-with-body --silent --show-error \
               --request PATCH \
               --url "https://api.surecart.com/v1/products/${PRODUCT_UUID}" \
@@ -55,8 +58,8 @@ jobs:
             # Wait a moment for the API to process
             sleep 2
             
-            # Now try to delete downloads
-            for download_id in "${DOWNLOAD_IDS[@]}"; do
+            # Delete ALL downloads in the test product
+            for download_id in "${ALL_DOWNLOAD_IDS[@]}"; do
               if [ -n "$download_id" ]; then
                 echo "Deleting download: $download_id"
                 DELETE_RESPONSE=$(curl --silent --write-out "HTTPSTATUS:%{http_code}" \
@@ -66,34 +69,16 @@ jobs:
                   --header "Authorization: Bearer ${{ secrets.SURECART_API_TOKEN }}")
                 
                 HTTP_STATUS=$(echo "$DELETE_RESPONSE" | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
-                RESPONSE_BODY=$(echo "$DELETE_RESPONSE" | sed -e 's/HTTPSTATUS:.*//g')
                 
                 if [ "$HTTP_STATUS" -eq 200 ]; then
                   echo "✅ Successfully deleted download: $download_id"
-                elif [ "$HTTP_STATUS" -eq 422 ]; then
-                  # Try to archive instead of delete if it's still protected
-                  echo "⚠️  Cannot delete download $download_id, trying to archive..."
-                  ARCHIVE_RESPONSE=$(curl --silent --write-out "HTTPSTATUS:%{http_code}" \
-                    --request PATCH \
-                    --url "https://api.surecart.com/v1/downloads/${download_id}" \
-                    --header 'Accept: application/json' \
-                    --header "Authorization: Bearer ${{ secrets.SURECART_API_TOKEN }}" \
-                    --header 'Content-Type: application/json' \
-                    --data "{\"download\":{\"id\":\"${download_id}\",\"archived\":true}}")
-                  
-                  ARCHIVE_STATUS=$(echo "$ARCHIVE_RESPONSE" | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
-                  if [ "$ARCHIVE_STATUS" -eq 200 ]; then
-                    echo "📦 Archived download: $download_id"
-                  else
-                    echo "❌ Failed to archive download $download_id"
-                  fi
                 else
                   echo "❌ Failed to delete download $download_id (HTTP $HTTP_STATUS)"
                 fi
               fi
             done
           else
-            echo "No downloads found to clean up"
+            echo "No downloads found in test product - already clean"
           fi
           
           echo "✅ Product cleanup completed"
