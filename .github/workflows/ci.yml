@@ -19,3 +19,18 @@ jobs:
         uses: reviewdog/action-actionlint@v1
         with:
           reporter: github-pr-check
+  
+  test:
+    name: Run Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bats
+        uses: bats-core/bats-action@2.0.0
+        with:
+          bats-version: 1.10.0
+
+      - name: Run tests
+        run: bats tests
