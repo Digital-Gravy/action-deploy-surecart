@@ -12,12 +12,42 @@ The action performs the following steps for each product UUID provided:
 
 ## Inputs
 
-| Input                  | Required | Description                                                          | Default |
-| ---------------------- | :------: | -------------------------------------------------------------------- | ------- |
-| `media_uuid`           |  `true`  | The media UUID of the uploaded release file.                         |         |
-| `product_uuids`        |  `true`  | A comma-separated list of Product UUIDs to deploy to.                |         |
-| `set_as_current_release` | `false`  | Set this download as the current release for the product(s).         | `false` |
-| `surecart_api_token`   |  `true`  | The SureCart API token for authentication.                           |         |
+| Input                    | Required | Description                                                          | Default |
+| ------------------------ | :------: | -------------------------------------------------------------------- | ------- |
+| `media_uuid`             |  `true`  | The media UUID of the uploaded release file.                        |         |
+| `product_uuids`          |  `true`  | A comma-separated list of Product UUIDs to deploy to.               |         |
+| `set_as_current_release` | `false`  | Set this download as the current release for the product(s).        | `false` |
+| `duplicate_media_behavior`| `false` | How to handle duplicate media: `warn` (show warning, continue) or `error` (fail workflow). | `warn`  |
+| `surecart_api_token`     |  `true`  | The SureCart API token for authentication.                          |         |
+
+## Duplicate Media Handling
+
+The action provides flexible handling of duplicate media through the `duplicate_media_behavior` parameter:
+
+### `warn` (Default)
+When you try to use a media UUID that has already been used:
+- Shows a **warning** instead of failing
+- Continues the workflow execution
+- Skips the current release setting step (if enabled)
+- Displays: `⚠️ Duplicate Media Warning`
+
+### `error` (Strict Mode)
+When you try to use a media UUID that has already been used:
+- **Fails the workflow** with an error
+- Stops execution immediately
+- Displays: `❌ Deployment Failed`
+
+### Use Cases
+
+**`warn` mode** is useful for:
+- **Testing scenarios** where you want to reuse the same media file
+- **Development workflows** where you might deploy the same build multiple times
+- **Situations where workflow failure is not desired** for duplicate media
+
+**`error` mode** is useful for:
+- **Production deployments** where duplicate media should never occur
+- **Strict CI/CD pipelines** that require unique media for each release
+- **Environments where failures should be explicit**
 
 ## Usage
 
@@ -54,6 +84,32 @@ jobs:
           product_uuids: ${{ inputs.product_uuids }}
           set_as_current_release: ${{ inputs.set_as_current_release }}
           surecart_api_token: ${{ secrets.SURECART_API_TOKEN }}
+```
+
+### Example: Strict Mode (Fail on Duplicate Media)
+
+```yaml
+- name: Deploy to SureCart (Strict Mode)
+  uses: Digital-Gravy/action-deploy-surecart@main
+  with:
+    media_uuid: ${{ inputs.media_uuid }}
+    product_uuids: ${{ inputs.product_uuids }}
+    set_as_current_release: true
+    duplicate_media_behavior: error  # Fail workflow on duplicate media
+    surecart_api_token: ${{ secrets.SURECART_API_TOKEN }}
+```
+
+### Example: Explicit Warning Mode
+
+```yaml
+- name: Deploy to SureCart (Warning Mode)
+  uses: Digital-Gravy/action-deploy-surecart@main
+  with:
+    media_uuid: ${{ inputs.media_uuid }}
+    product_uuids: ${{ inputs.product_uuids }}
+    set_as_current_release: true
+    duplicate_media_behavior: warn  # Show warning, continue workflow
+    surecart_api_token: ${{ secrets.SURECART_API_TOKEN }}
 ```
 
 ### Secrets
@@ -104,6 +160,8 @@ Integration tests verify the action works end-to-end with the real SureCart API.
      - `basic_without_current_release`: Creates a download without setting as current release
      - `multiple_products`: Tests deployment to multiple products
      - `error_handling`: Tests error handling with invalid inputs
+     - `duplicate_media_warn`: Tests duplicate media with warning behavior (should succeed with warning)
+     - `duplicate_media_error`: Tests duplicate media with error behavior (should fail)
 
 3. **Test Data:**
    The integration tests use predefined test data:

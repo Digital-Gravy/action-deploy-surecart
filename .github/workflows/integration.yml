@@ -13,6 +13,8 @@ on:
           - basic_without_current_release
           - multiple_products
           - error_handling
+          - duplicate_media_warn
+          - duplicate_media_error
   push:
     branches: [main]
     paths:
@@ -144,6 +146,38 @@ jobs:
             exit 1
           else
             echo "✅ Error handling test failed as expected"
+          fi
+
+      - name: Test Duplicate Media Warning Behavior
+        if: inputs.test_scenario == 'duplicate_media_warn'
+        uses: ./
+        with:
+          media_uuid: '8cc4a4e0-102b-4266-a81e-4aef9ff5713c'  # Reuse existing test media
+          product_uuids: 'c995fb9c-70cc-4de2-b34f-6ce9d331705a'
+          set_as_current_release: 'false'
+          duplicate_media_behavior: 'warn'
+          surecart_api_token: ${{ secrets.SURECART_API_TOKEN }}
+
+      - name: Test Duplicate Media Error Behavior
+        if: inputs.test_scenario == 'duplicate_media_error'
+        uses: ./
+        id: duplicate-error-test
+        continue-on-error: true
+        with:
+          media_uuid: '8cc4a4e0-102b-4266-a81e-4aef9ff5713c'  # Reuse existing test media
+          product_uuids: 'c995fb9c-70cc-4de2-b34f-6ce9d331705a'
+          set_as_current_release: 'false'
+          duplicate_media_behavior: 'error'
+          surecart_api_token: ${{ secrets.SURECART_API_TOKEN }}
+
+      - name: Verify Duplicate Error Test Failed as Expected
+        if: inputs.test_scenario == 'duplicate_media_error'
+        run: |
+          if [ "${{ steps.duplicate-error-test.outcome }}" != "failure" ]; then
+            echo "::error::Expected the duplicate media error test to fail, but it succeeded"
+            exit 1
+          else
+            echo "✅ Duplicate media error test failed as expected"
           fi
 
   post-test-cleanup:

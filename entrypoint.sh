@@ -27,14 +27,20 @@ for product_uuid in "${product_uuids[@]}"; do
   export SURECART_API_TOKEN="${INPUT_SURECART_API_TOKEN}"
   export MEDIA_UUID="${INPUT_MEDIA_UUID}"
   export PRODUCT_UUID="${product_uuid}"
+  export DUPLICATE_MEDIA_BEHAVIOR="${INPUT_DUPLICATE_MEDIA_BEHAVIOR}"
   
   new_download_id=$(./create-download.sh)
 
   # If the set_as_current_release flag is true, run the next step.
   if [[ "${INPUT_SET_AS_CURRENT_RELEASE}" == "true" ]]; then
-    # Pass the captured download_id to the set-release script.
-    export DOWNLOAD_ID="${new_download_id}"
-    ./set-release.sh
+    # Check if we got a real download ID or a duplicate media placeholder
+    if [[ "${new_download_id}" == "duplicate-media-no-new-download" ]]; then
+      echo "⚠️  Skipping current release setting - no new download was created due to duplicate media" >&2
+    else
+      # Pass the captured download_id to the set-release script.
+      export DOWNLOAD_ID="${new_download_id}"
+      ./set-release.sh
+    fi
   fi
 
   echo "--- Finished deployment for product: ${product_uuid} ---"

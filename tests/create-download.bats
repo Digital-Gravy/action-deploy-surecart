@@ -39,10 +39,26 @@ teardown() {
   assert_output "4391ffb4-6bdd-46ec-8e8f-c7ca80179123"
 }
 
-@test "create-download.sh: handles specific 'media taken' error" {
+@test "create-download.sh: handles 'media taken' with warn behavior (default)" {
   # --- Arrange ---
   export MOCK_API_HTTP_STATUS=422
   export MOCK_API_RESPONSE_FIXTURE="${BATS_TEST_DIRNAME}/fixtures/create-download-media-taken-error.json"
+  export DUPLICATE_MEDIA_BEHAVIOR="warn"
+  
+  # --- Act ---
+  run "${BATS_TEST_DIRNAME}/../create-download.sh"
+  
+  # --- Assert ---
+  assert_success
+  assert_line --partial "The media file (UUID: 8cc4a4e0-102b-4266-a81e-4aef9ff5713c) has already been used"
+  assert_line "duplicate-media-no-new-download"
+}
+
+@test "create-download.sh: handles 'media taken' with error behavior" {
+  # --- Arrange ---
+  export MOCK_API_HTTP_STATUS=422
+  export MOCK_API_RESPONSE_FIXTURE="${BATS_TEST_DIRNAME}/fixtures/create-download-media-taken-error.json"
+  export DUPLICATE_MEDIA_BEHAVIOR="error"
   
   # --- Act ---
   run "${BATS_TEST_DIRNAME}/../create-download.sh"
@@ -50,6 +66,34 @@ teardown() {
   # --- Assert ---
   assert_failure 1
   assert_line --partial "Deployment failed. The media file (UUID: 8cc4a4e0-102b-4266-a81e-4aef9ff5713c) has already been used"
+}
+
+@test "create-download.sh: defaults to warn behavior when DUPLICATE_MEDIA_BEHAVIOR is unset" {
+  # --- Arrange ---
+  export MOCK_API_HTTP_STATUS=422
+  export MOCK_API_RESPONSE_FIXTURE="${BATS_TEST_DIRNAME}/fixtures/create-download-media-taken-error.json"
+  # Explicitly unset the environment variable to test default behavior
+  unset DUPLICATE_MEDIA_BEHAVIOR
+  
+  # --- Act ---
+  run "${BATS_TEST_DIRNAME}/../create-download.sh"
+  
+  # --- Assert ---
+  assert_success
+  assert_line --partial "The media file (UUID: 8cc4a4e0-102b-4266-a81e-4aef9ff5713c) has already been used"
+  assert_line "duplicate-media-no-new-download"
+}
+
+@test "create-download.sh: validates DUPLICATE_MEDIA_BEHAVIOR parameter" {
+  # --- Arrange ---
+  export DUPLICATE_MEDIA_BEHAVIOR="invalid_value"
+  
+  # --- Act ---
+  run "${BATS_TEST_DIRNAME}/../create-download.sh"
+  
+  # --- Assert ---
+  assert_failure 1
+  assert_line --partial "Invalid duplicate_media_behavior value: 'invalid_value'. Must be 'warn' or 'error'."
 }
 
 @test "create-download.sh: handles generic API error" {
