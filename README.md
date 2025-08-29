@@ -144,29 +144,54 @@ To run the tests locally, you'll need to install the `bats-core` test runner and
 
 ## Integration Testing
 
-Integration tests verify the action works end-to-end with the real SureCart API. These tests are run manually to avoid consuming API quota on every commit.
+Integration tests verify the action works end-to-end with the real SureCart API using a comprehensive matrix strategy that tests all parameter combinations.
+
+### Test Matrix Strategy
+
+The integration tests use a **sequential matrix approach** to test all combinations of:
+- **Products**: `single` vs `multiple` 
+- **Current Release**: `true` vs `false`
+- **Duplicate Behavior**: `warn` vs `error`
+
+This ensures comprehensive coverage of all possible scenarios while running tests sequentially to avoid race conditions on the shared test product.
 
 ### Running Integration Tests
 
 1. **Set up Repository Secrets:**
    - `SURECART_API_TOKEN`: Your SureCart API token
 
-2. **Run Tests Manually:**
+2. **Manual Testing:**
    - Go to the Actions tab in your GitHub repository
    - Select "Integration Tests" workflow
    - Click "Run workflow"
-   - Choose a test scenario:
-     - `with_current_release`: Creates a download and sets it as current release
-     - `basic_without_current_release`: Creates a download without setting as current release
-     - `multiple_products`: Tests deployment to multiple products
-     - `error_handling`: Tests error handling with invalid inputs
-     - `duplicate_media_warn`: Tests duplicate media with warning behavior (should succeed with warning)
-     - `duplicate_media_error`: Tests duplicate media with error behavior (should fail)
+   - Choose test scope:
+     - **`quick`**: Runs 3 key combinations (good for development)
+     - **`full`**: Runs all 8 combinations (comprehensive validation)
+     - **`error_handling`**: Tests error scenarios with invalid inputs
 
-3. **Test Data:**
-   The integration tests use predefined test data:
-   - Product UUID: `c995fb9c-70cc-4de2-b34f-6ce9d331705a`
-   - Media UUID: `8cc4a4e0-102b-4266-a81e-4aef9ff5713c`
+3. **Automatic Testing:**
+   - **Push/PR**: Automatically runs `quick` scope (3 tests)
+   - **Scheduled**: Runs `full` scope weekly (8 tests)
+
+### Test Combinations
+
+**Quick Scope (3 tests):**
+- Single Product + Current Release + Warn
+- Single Product + Current Release + Error  
+- Multiple Products + No Current Release + Warn
+
+**Full Scope (8 tests):**
+- All combinations of `single`/`multiple` × `true`/`false` × `warn`/`error`
+
+### Test Data
+- **Product UUID**: `c995fb9c-70cc-4de2-b34f-6ce9d331705a`
+- **Media UUID**: `8cc4a4e0-102b-4266-a81e-4aef9ff5713c`
+
+### Key Features
+- **Sequential Execution**: Tests run one at a time to avoid conflicts
+- **Clean State**: Each test starts with a completely clean product state
+- **Flexible Scoping**: Choose the right level of testing for your needs
+- **Real API Calls**: End-to-end validation with actual SureCart API
 
 **Note:** These tests make real API calls to SureCart, so use them judiciously.
 

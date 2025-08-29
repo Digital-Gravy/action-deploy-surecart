@@ -3,18 +3,15 @@ name: Integration Tests
 on:
   workflow_dispatch:
     inputs:
-      test_scenario:
-        description: 'Test scenario to run'
+      test_scope:
+        description: 'Test scope to run'
         required: true
-        default: 'with_current_release'
+        default: 'quick'
         type: choice
         options:
-          - with_current_release
-          - basic_without_current_release
-          - multiple_products
+          - quick
+          - full
           - error_handling
-          - duplicate_media_warn
-          - duplicate_media_error
   push:
     branches: [main]
     paths:
@@ -32,19 +29,154 @@ on:
     - cron: '0 9 * * 1'
 
 jobs:
-  integration-test:
-    name: Integration Test - ${{ inputs.test_scenario || 'auto' }}
+  setup-matrix:
+    name: Setup Test Matrix
     runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Set test matrix based on scope
+        id: set-matrix
+        run: |
+          # Determine test scope based on trigger type
+          if [ "${{ github.event_name }}" == "schedule" ]; then
+            TEST_SCOPE="full"
+          elif [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            TEST_SCOPE="${{ inputs.test_scope }}"
+          else
+            # Push/PR triggers use quick scope
+            TEST_SCOPE="quick"
+          fi
+          
+          echo "Using test scope: $TEST_SCOPE"
+          
+          case "$TEST_SCOPE" in
+            "quick")
+              # Quick test: Key combinations for development
+              matrix=$(cat << 'EOF'
+          {
+            "include": [
+              {
+                "name": "Single Product + Current Release + Warn",
+                "products": "single",
+                "current_release": "true",
+                "duplicate_behavior": "warn"
+              },
+              {
+                "name": "Single Product + Current Release + Error",
+                "products": "single",
+                "current_release": "true", 
+                "duplicate_behavior": "error"
+              },
+              {
+                "name": "Multiple Products + No Current Release + Warn",
+                "products": "multiple",
+                "current_release": "false",
+                "duplicate_behavior": "warn"
+              }
+            ]
+          }
+          EOF
+              )
+              ;;
+            "full")
+              # Full test: All combinations
+              matrix=$(cat << 'EOF'
+          {
+            "include": [
+              {
+                "name": "Single Product + Current Release + Warn",
+                "products": "single",
+                "current_release": "true",
+                "duplicate_behavior": "warn"
+              },
+              {
+                "name": "Single Product + Current Release + Error",
+                "products": "single",
+                "current_release": "true",
+                "duplicate_behavior": "error"
+              },
+              {
+                "name": "Single Product + No Current Release + Warn",
+                "products": "single",
+                "current_release": "false",
+                "duplicate_behavior": "warn"
+              },
+              {
+                "name": "Single Product + No Current Release + Error",
+                "products": "single",
+                "current_release": "false",
+                "duplicate_behavior": "error"
+              },
+              {
+                "name": "Multiple Products + Current Release + Warn",
+                "products": "multiple",
+                "current_release": "true",
+                "duplicate_behavior": "warn"
+              },
+              {
+                "name": "Multiple Products + Current Release + Error",
+                "products": "multiple",
+                "current_release": "true",
+                "duplicate_behavior": "error"
+              },
+              {
+                "name": "Multiple Products + No Current Release + Warn",
+                "products": "multiple",
+                "current_release": "false",
+                "duplicate_behavior": "warn"
+              },
+              {
+                "name": "Multiple Products + No Current Release + Error",
+                "products": "multiple",
+                "current_release": "false",
+                "duplicate_behavior": "error"
+              }
+            ]
+          }
+          EOF
+              )
+              ;;
+            "error_handling")
+              # Error handling: Invalid inputs
+              matrix=$(cat << 'EOF'
+          {
+            "include": [
+              {
+                "name": "Invalid Media UUID",
+                "products": "single",
+                "current_release": "false",
+                "duplicate_behavior": "error",
+                "media_uuid": "invalid-uuid-12345",
+                "expect_failure": "true"
+              }
+            ]
+          }
+          EOF
+              )
+              ;;
+          esac
+          
+          echo "matrix=$matrix" >> $GITHUB_OUTPUT
+          echo "Generated matrix for scope: $TEST_SCOPE"
+          echo "$matrix" | jq '.'
+
+  integration-test:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    needs: setup-matrix
+    strategy:
+      matrix: ${{ fromJson(needs.setup-matrix.outputs.matrix) }}
+      max-parallel: 1  # Sequential execution to avoid race conditions
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Clean Product State Before Test
         run: |
-          echo "🧹 Cleaning product state before test..."
+          echo "🧹 Cleaning product state before test: ${{ matrix.name }}"
           
           PRODUCT_UUID="c995fb9c-70cc-4de2-b34f-6ce9d331705a"
-          TEST_MEDIA_UUID="8cc4a4e0-102b-4266-a81e-4aef9ff5713c"
           
           # Get all downloads for this specific test product using the correct API endpoint
           echo "Fetching downloads for test product ${PRODUCT_UUID}..."
@@ -100,84 +232,25 @@ jobs:
           
           echo "✅ Product cleanup completed"
 
-      - name: Test with Current Release Setting
-        if: inputs.test_scenario == 'with_current_release' || inputs.test_scenario == null
+      - name: Run Matrix Test
         uses: ./
+        id: matrix-test
+        continue-on-error: ${{ matrix.expect_failure == 'true' }}
         with:
-          media_uuid: '8cc4a4e0-102b-4266-a81e-4aef9ff5713c'
-          product_uuids: 'c995fb9c-70cc-4de2-b34f-6ce9d331705a'
-          set_as_current_release: 'true'
+          media_uuid: ${{ matrix.media_uuid || '8cc4a4e0-102b-4266-a81e-4aef9ff5713c' }}
+          product_uuids: ${{ matrix.products == 'multiple' && 'c995fb9c-70cc-4de2-b34f-6ce9d331705a, c995fb9c-70cc-4de2-b34f-6ce9d331705a' || 'c995fb9c-70cc-4de2-b34f-6ce9d331705a' }}
+          set_as_current_release: ${{ matrix.current_release }}
+          duplicate_media_behavior: ${{ matrix.duplicate_behavior }}
           surecart_api_token: ${{ secrets.SURECART_API_TOKEN }}
 
-      - name: Test Basic Deployment (Without Current Release)
-        if: inputs.test_scenario == 'basic_without_current_release'
-        uses: ./
-        with:
-          media_uuid: '8cc4a4e0-102b-4266-a81e-4aef9ff5713c'
-          product_uuids: 'c995fb9c-70cc-4de2-b34f-6ce9d331705a'
-          set_as_current_release: 'false'
-          surecart_api_token: ${{ secrets.SURECART_API_TOKEN }}
-
-      - name: Test Multiple Products
-        if: inputs.test_scenario == 'multiple_products'
-        uses: ./
-        with:
-          media_uuid: '8cc4a4e0-102b-4266-a81e-4aef9ff5713c'
-          product_uuids: 'c995fb9c-70cc-4de2-b34f-6ce9d331705a, c995fb9c-70cc-4de2-b34f-6ce9d331705a'
-          set_as_current_release: 'false'
-          surecart_api_token: ${{ secrets.SURECART_API_TOKEN }}
-
-      - name: Test Error Handling (Invalid Media UUID)
-        if: inputs.test_scenario == 'error_handling'
-        uses: ./
-        id: error-test
-        continue-on-error: true
-        with:
-          media_uuid: 'invalid-uuid-12345'
-          product_uuids: 'c995fb9c-70cc-4de2-b34f-6ce9d331705a'
-          set_as_current_release: 'false'
-          surecart_api_token: ${{ secrets.SURECART_API_TOKEN }}
-
-      - name: Verify Error Test Failed as Expected
-        if: inputs.test_scenario == 'error_handling'
+      - name: Verify Expected Outcome
+        if: matrix.expect_failure == 'true'
         run: |
-          if [ "${{ steps.error-test.outcome }}" != "failure" ]; then
-            echo "::error::Expected the error test to fail, but it succeeded"
+          if [ "${{ steps.matrix-test.outcome }}" != "failure" ]; then
+            echo "::error::Expected test '${{ matrix.name }}' to fail, but it succeeded"
             exit 1
           else
-            echo "✅ Error handling test failed as expected"
-          fi
-
-      - name: Test Duplicate Media Warning Behavior
-        if: inputs.test_scenario == 'duplicate_media_warn'
-        uses: ./
-        with:
-          media_uuid: '8cc4a4e0-102b-4266-a81e-4aef9ff5713c'  # Reuse existing test media
-          product_uuids: 'c995fb9c-70cc-4de2-b34f-6ce9d331705a'
-          set_as_current_release: 'false'
-          duplicate_media_behavior: 'warn'
-          surecart_api_token: ${{ secrets.SURECART_API_TOKEN }}
-
-      - name: Test Duplicate Media Error Behavior
-        if: inputs.test_scenario == 'duplicate_media_error'
-        uses: ./
-        id: duplicate-error-test
-        continue-on-error: true
-        with:
-          media_uuid: '8cc4a4e0-102b-4266-a81e-4aef9ff5713c'  # Reuse existing test media
-          product_uuids: 'c995fb9c-70cc-4de2-b34f-6ce9d331705a'
-          set_as_current_release: 'false'
-          duplicate_media_behavior: 'error'
-          surecart_api_token: ${{ secrets.SURECART_API_TOKEN }}
-
-      - name: Verify Duplicate Error Test Failed as Expected
-        if: inputs.test_scenario == 'duplicate_media_error'
-        run: |
-          if [ "${{ steps.duplicate-error-test.outcome }}" != "failure" ]; then
-            echo "::error::Expected the duplicate media error test to fail, but it succeeded"
-            exit 1
-          else
-            echo "✅ Duplicate media error test failed as expected"
+            echo "✅ Test '${{ matrix.name }}' failed as expected"
           fi
 
   post-test-cleanup:
@@ -190,13 +263,17 @@ jobs:
         run: |
           echo "## Integration Test Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Test Scenario:** ${{ inputs.test_scenario || 'with_current_release (auto)' }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Status:** ${{ needs.integration-test.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Test Scope:** ${{ inputs.test_scope || (github.event_name == 'schedule' && 'full (auto)' || 'quick (auto)') }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Overall Status:** ${{ needs.integration-test.result }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           if [ "${{ needs.integration-test.result }}" == "success" ]; then
-            echo "✅ Integration test passed successfully!" >> $GITHUB_STEP_SUMMARY
+            echo "✅ All integration tests passed successfully!" >> $GITHUB_STEP_SUMMARY
           else
-            echo "❌ Integration test failed. Check the logs above for details." >> $GITHUB_STEP_SUMMARY
+            echo "❌ Some integration tests failed. Check the logs above for details." >> $GITHUB_STEP_SUMMARY
           fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Matrix Tests Executed:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Tests run in sequential order to avoid race conditions" >> $GITHUB_STEP_SUMMARY
+          echo "- Each test includes full product cleanup before execution" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Note:** These tests use real API calls to SureCart." >> $GITHUB_STEP_SUMMARY
