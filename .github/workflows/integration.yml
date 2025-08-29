@@ -53,104 +53,15 @@ jobs:
           case "$TEST_SCOPE" in
             "quick")
               # Quick test: Key combinations for development
-              matrix=$(jq -n '
-                {
-                  "include": [
-                    {
-                      "name": "Single Product + Current Release + Warn",
-                      "products": "single",
-                      "current_release": "true",
-                      "duplicate_behavior": "warn"
-                    },
-                    {
-                      "name": "Single Product + Current Release + Error",
-                      "products": "single",
-                      "current_release": "true", 
-                      "duplicate_behavior": "error"
-                    },
-                    {
-                      "name": "Multiple Products + No Current Release + Warn",
-                      "products": "multiple",
-                      "current_release": "false",
-                      "duplicate_behavior": "warn"
-                    }
-                  ]
-                }
-              ')
+              matrix='{"include":[{"name":"Single Product + Current Release + Warn","products":"single","current_release":"true","duplicate_behavior":"warn"},{"name":"Single Product + Current Release + Error","products":"single","current_release":"true","duplicate_behavior":"error"},{"name":"Multiple Products + No Current Release + Warn","products":"multiple","current_release":"false","duplicate_behavior":"warn"}]}'
               ;;
             "full")
               # Full test: All combinations
-              matrix=$(jq -n '
-                {
-                  "include": [
-                    {
-                      "name": "Single Product + Current Release + Warn",
-                      "products": "single",
-                      "current_release": "true",
-                      "duplicate_behavior": "warn"
-                    },
-                    {
-                      "name": "Single Product + Current Release + Error",
-                      "products": "single",
-                      "current_release": "true",
-                      "duplicate_behavior": "error"
-                    },
-                    {
-                      "name": "Single Product + No Current Release + Warn",
-                      "products": "single",
-                      "current_release": "false",
-                      "duplicate_behavior": "warn"
-                    },
-                    {
-                      "name": "Single Product + No Current Release + Error",
-                      "products": "single",
-                      "current_release": "false",
-                      "duplicate_behavior": "error"
-                    },
-                    {
-                      "name": "Multiple Products + Current Release + Warn",
-                      "products": "multiple",
-                      "current_release": "true",
-                      "duplicate_behavior": "warn"
-                    },
-                    {
-                      "name": "Multiple Products + Current Release + Error",
-                      "products": "multiple",
-                      "current_release": "true",
-                      "duplicate_behavior": "error"
-                    },
-                    {
-                      "name": "Multiple Products + No Current Release + Warn",
-                      "products": "multiple",
-                      "current_release": "false",
-                      "duplicate_behavior": "warn"
-                    },
-                    {
-                      "name": "Multiple Products + No Current Release + Error",
-                      "products": "multiple",
-                      "current_release": "false",
-                      "duplicate_behavior": "error"
-                    }
-                  ]
-                }
-              ')
+              matrix='{"include":[{"name":"Single Product + Current Release + Warn","products":"single","current_release":"true","duplicate_behavior":"warn"},{"name":"Single Product + Current Release + Error","products":"single","current_release":"true","duplicate_behavior":"error"},{"name":"Single Product + No Current Release + Warn","products":"single","current_release":"false","duplicate_behavior":"warn"},{"name":"Single Product + No Current Release + Error","products":"single","current_release":"false","duplicate_behavior":"error"},{"name":"Multiple Products + Current Release + Warn","products":"multiple","current_release":"true","duplicate_behavior":"warn"},{"name":"Multiple Products + Current Release + Error","products":"multiple","current_release":"true","duplicate_behavior":"error"},{"name":"Multiple Products + No Current Release + Warn","products":"multiple","current_release":"false","duplicate_behavior":"warn"},{"name":"Multiple Products + No Current Release + Error","products":"multiple","current_release":"false","duplicate_behavior":"error"}]}'
               ;;
             "error_handling")
               # Error handling: Invalid inputs
-              matrix=$(jq -n '
-                {
-                  "include": [
-                    {
-                      "name": "Invalid Media UUID",
-                      "products": "single",
-                      "current_release": "false",
-                      "duplicate_behavior": "error",
-                      "media_uuid": "invalid-uuid-12345",
-                      "expect_failure": "true"
-                    }
-                  ]
-                }
-              ')
+              matrix='{"include":[{"name":"Invalid Media UUID","products":"single","current_release":"false","duplicate_behavior":"error","media_uuid":"invalid-uuid-12345","expect_failure":"true"}]}'
               ;;
           esac
           
