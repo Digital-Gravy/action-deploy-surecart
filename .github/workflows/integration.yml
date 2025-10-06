@@ -186,19 +186,21 @@ jobs:
     steps:
       - name: Integration Test Results
         run: |
-          echo "## Integration Test Results" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Test Scope:** ${{ inputs.test_scope || (github.event_name == 'schedule' && 'full (auto)' || 'quick (auto)') }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Overall Status:** ${{ needs.integration-test.result }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ needs.integration-test.result }}" == "success" ]; then
-            echo "✅ All integration tests passed successfully!" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "❌ Some integration tests failed. Check the logs above for details." >> $GITHUB_STEP_SUMMARY
-          fi
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Matrix Tests Executed:**" >> $GITHUB_STEP_SUMMARY
-          echo "- Tests run in sequential order to avoid race conditions" >> $GITHUB_STEP_SUMMARY
-          echo "- Each test includes full product cleanup before execution" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Note:** These tests use real API calls to SureCart." >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## Integration Test Results"
+            echo ""
+            echo "**Test Scope:** ${{ inputs.test_scope || (github.event_name == 'schedule' && 'full (auto)' || 'quick (auto)') }}"
+            echo "**Overall Status:** ${{ needs.integration-test.result }}"
+            echo ""
+            if [ "${{ needs.integration-test.result }}" == "success" ]; then
+              echo "✅ All integration tests passed successfully!"
+            else
+              echo "❌ Some integration tests failed. Check the logs above for details."
+            fi
+            echo ""
+            echo "**Matrix Tests Executed:**"
+            echo "- Tests run in sequential order to avoid race conditions"
+            echo "- Each test includes full product cleanup before execution"
+            echo ""
+            echo "**Note:** These tests use real API calls to SureCart."
+          } >> "$GITHUB_STEP_SUMMARY"
