@@ -1,0 +1,20 @@
+import type { RunResult } from './runV1Mode';
+export type RunV2Params = {
+    releaseTag: string;
+    repo: string;
+    githubToken: string;
+    assetPattern: string;
+    currentReleaseAssetPattern: string;
+    objectKeyPrefix: string;
+    productUuids: string[];
+    setAsCurrentRelease: boolean;
+    duplicateBehavior: 'warn' | 'error';
+    apiToken: string;
+    r2AccountId: string;
+    r2AccessKeyId: string;
+    r2SecretAccessKey: string;
+    r2Bucket: string;
+    r2PublicBaseUrl: string;
+    dryRun: boolean;
+};
+export declare function runV2Mode(params: RunV2Params): Promise<RunResult>;

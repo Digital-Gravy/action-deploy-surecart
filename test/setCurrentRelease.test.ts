@@ -41,9 +41,7 @@ describe('setCurrentRelease', () => {
   });
 
   it('resolves cleanly on 200 with current_release_download set', async () => {
-    const { mockFetch } = recorder([
-      { body: '{"id":"x","current_release_download":"dl_new"}' },
-    ]);
+    const { mockFetch } = recorder([{ body: '{"id":"x","current_release_download":"dl_new"}' }]);
     await expect(setCurrentRelease({ ...base, fetcher: mockFetch })).resolves.toBeUndefined();
   });
 

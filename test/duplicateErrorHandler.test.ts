@@ -7,18 +7,14 @@ describe('detectDuplicate', () => {
 
   it('returns duplicate with existing download_id when error is "Media has already been taken"', () => {
     const body = {
-      validation_errors: [
-        { message: 'Media has already been taken', download_id: 'dl_abc123' },
-      ],
+      validation_errors: [{ message: 'Media has already been taken', download_id: 'dl_abc123' }],
     };
     expect(detectDuplicate(body)).toEqual({ kind: 'duplicate', downloadId: 'dl_abc123' });
   });
 
   it('returns duplicate when error is "Url has already been taken"', () => {
     const body = {
-      validation_errors: [
-        { message: 'Url has already been taken', download_id: 'dl_xyz789' },
-      ],
+      validation_errors: [{ message: 'Url has already been taken', download_id: 'dl_xyz789' }],
     };
     expect(detectDuplicate(body)).toEqual({ kind: 'duplicate', downloadId: 'dl_xyz789' });
   });

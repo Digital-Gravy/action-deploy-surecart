@@ -67,9 +67,7 @@ describe('createDownload (v2 mode — externalUrl)', () => {
 describe('createDownload (duplicate handling)', () => {
   it('returns existing id with isDuplicate=true on 422 duplicate with behavior=warn', async () => {
     const body = JSON.stringify({
-      validation_errors: [
-        { message: 'Media has already been taken', download_id: 'dl_existing' },
-      ],
+      validation_errors: [{ message: 'Media has already been taken', download_id: 'dl_existing' }],
     });
     const { mockFetch } = recorder([{ body, status: 422 }]);
     await expect(
@@ -124,8 +122,8 @@ describe('createDownload (duplicate handling)', () => {
 
   it('throws on 5xx server error', async () => {
     const { mockFetch } = recorder([{ body: 'boom', status: 500 }]);
-    await expect(
-      createDownload({ ...base, mediaId: 'med_x', fetcher: mockFetch })
-    ).rejects.toThrow(/500/);
+    await expect(createDownload({ ...base, mediaId: 'med_x', fetcher: mockFetch })).rejects.toThrow(
+      /500/
+    );
   });
 });

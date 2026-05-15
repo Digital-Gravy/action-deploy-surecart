@@ -40,16 +40,14 @@ describe('findReleaseAssets', () => {
       assets: [{ name: 'source.tar.gz', url: 'u', size: 10 }],
     });
     const { mockFetch } = recorder([{ body }]);
-    await expect(
-      findReleaseAssets('v1', 'o/r', 'tok', '*.zip', mockFetch)
-    ).rejects.toThrow(/No release assets/);
+    await expect(findReleaseAssets('v1', 'o/r', 'tok', '*.zip', mockFetch)).rejects.toThrow(
+      /No release assets/
+    );
   });
 
   it('throws when GitHub returns non-2xx', async () => {
     const { mockFetch } = recorder([{ status: 404, body: 'nf' }]);
-    await expect(
-      findReleaseAssets('v1', 'o/r', 'tok', '*.zip', mockFetch)
-    ).rejects.toThrow(/404/);
+    await expect(findReleaseAssets('v1', 'o/r', 'tok', '*.zip', mockFetch)).rejects.toThrow(/404/);
   });
 
   it('sends Bearer Authorization header', async () => {

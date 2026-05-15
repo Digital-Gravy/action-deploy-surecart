@@ -48,7 +48,5 @@ export async function createDownload(params: CreateDownloadParams): Promise<Crea
     return { id: dup.downloadId, isDuplicate: true };
   }
 
-  throw new Error(
-    `SureCart /v1/downloads returned ${res.status}: ${JSON.stringify(errBody)}`
-  );
+  throw new Error(`SureCart /v1/downloads returned ${res.status}: ${JSON.stringify(errBody)}`);
 }
