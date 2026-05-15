@@ -1,0 +1,12 @@
+node_modules/
+coverage/
+*.log
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+*.tgz
+tests/bats-assert/
+tests/bats-support/
