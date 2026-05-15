@@ -20045,12 +20045,9 @@ var require_buildObjectKey = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.buildObjectKey = buildObjectKey;
-    var node_path_1 = require("node:path");
     function buildObjectKey(prefix, assetName, sha) {
-      const ext = (0, node_path_1.extname)(assetName);
-      const base = (0, node_path_1.basename)(assetName, ext);
       const cleanPrefix = prefix.replace(/^\/+|\/+$/g, "");
-      return `${cleanPrefix}/${base}-${sha}${ext}`;
+      return `${cleanPrefix}/${sha}/${assetName}`;
     }
   }
 });
