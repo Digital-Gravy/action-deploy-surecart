@@ -1,5 +1,5 @@
 name: 'Deploy to SureCart'
-description: 'Attach a release to one or more SureCart products. v1: use an existing SureCart-hosted media (media_uuid). v2: pull a GitHub release asset, upload to Cloudflare R2, attach the external URL.'
+description: 'Attach a release to one or more SureCart products. v1: use an existing SureCart-hosted media (media_uuid). v2/v3: pull a GitHub release asset — upload to Cloudflare R2 and attach the external URL (upload_target=r2), or upload to SureCart so the version is recognised for WordPress updates (upload_target=surecart).'
 author: 'Matteo Greco <matteo@digitalgravy.co>'
 
 inputs:
@@ -9,17 +9,21 @@ inputs:
     required: false
     default: ''
 
-  # ─── v2 mode (pass release_tag + R2 inputs) ───
+  # ─── v2/v3 mode (pass release_tag) ───
   release_tag:
-    description: 'GitHub release tag to publish. Accepts "latest". Triggers v2 mode (the action will download the matching release asset, upload to R2, and attach the external URL). Mutually exclusive with media_uuid.'
+    description: 'GitHub release tag to publish. Accepts "latest". Triggers v2/v3 mode (the action downloads the matching release asset). The upload_target input decides R2 (v2) vs SureCart (v3). Mutually exclusive with media_uuid.'
     required: false
     default: ''
+  upload_target:
+    description: 'Where to upload the release asset when release_tag is used. "r2" (default) → upload to Cloudflare R2 and attach the external URL (v2; does NOT surface a version to WordPress). "surecart" → upload to SureCart so the version is recognised and the WP update prompt works (v3).'
+    required: false
+    default: 'r2'
   asset_pattern:
-    description: 'Glob filter over release asset names. v2 mode only.'
+    description: 'Glob filter over release asset names. v2/v3 mode. In v3, narrow this to the plugin/theme zip(s) you ship as updates — a matched asset that is not a versioned update will fail the run.'
     required: false
     default: '*.zip'
   current_release_asset_pattern:
-    description: 'Glob picking which asset (by name) becomes the current_release_download when set_as_current_release=true. Empty = first matched asset. v2 mode only.'
+    description: 'Glob picking which asset (by name) becomes the current_release_download when set_as_current_release=true. Empty = first matched asset. v2/v3 mode.'
     required: false
     default: ''
   object_key_prefix:
@@ -51,7 +55,21 @@ inputs:
     required: false
     default: ${{ github.token }}
 
-  # ─── shared (both modes) ───
+  # ─── v3 mode only (upload_target=surecart) ───
+  release_ingest_timeout_seconds:
+    description: 'v3 mode. Max seconds to wait for the version to be recognised after upload. Fails the run on timeout.'
+    required: false
+    default: '30'
+  release_ingest_poll_interval_seconds:
+    description: 'v3 mode. Seconds between checks while waiting for the version to be recognised.'
+    required: false
+    default: '2'
+  expected_version:
+    description: 'v3 mode (optional). If set, the run aborts unless the recognised version matches this exactly.'
+    required: false
+    default: ''
+
+  # ─── shared (all modes) ───
   product_uuids:
     description: 'Comma-separated list of SureCart product UUIDs to attach the Download(s) to.'
     required: true
@@ -68,7 +86,7 @@ inputs:
     required: false
     default: ''
   dry_run:
-    description: 'When true, log the planned R2 uploads + SureCart POST/PATCH calls without executing them.'
+    description: 'When true, log the planned uploads + SureCart POST/PATCH calls without executing them.'
     required: false
     default: 'false'
   surecart_api_token:
@@ -79,9 +97,11 @@ outputs:
   download_ids:
     description: 'Comma-separated list of created/found Download IDs (product × asset).'
   public_urls:
-    description: 'Comma-separated list of R2 public URLs uploaded this run. v2 mode only — empty in v1 mode.'
+    description: 'Comma-separated list of R2 public URLs uploaded this run. v2 mode only — empty in v1/v3 modes.'
   object_keys:
     description: 'Comma-separated list of R2 object keys created. v2 mode only.'
+  media_ids:
+    description: 'Comma-separated list of SureCart media UUIDs created this run. v3 mode only — empty in v1/v2 modes.'
   action_taken:
     description: 'One of "created", "partial" (some duplicates surfaced), or "skipped" (dry-run).'
 
