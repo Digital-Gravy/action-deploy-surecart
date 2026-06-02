@@ -57413,6 +57413,314 @@ var require_runV2Mode = __commonJS({
   }
 });
 
+// dist/lib/createMedia.js
+var require_createMedia = __commonJS({
+  "dist/lib/createMedia.js"(exports2) {
+    "use strict";
+    Object.defineProperty(exports2, "__esModule", { value: true });
+    exports2.createMedia = createMedia;
+    async function createMedia(params) {
+      const fetcher = params.fetcher ?? fetch;
+      const res = await fetcher("https://api.surecart.com/v1/medias", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${params.apiToken}`,
+          "Content-Type": "application/json",
+          Accept: "application/json"
+        },
+        body: JSON.stringify({ media: { direct_upload_signed_id: params.signedId } })
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(`SureCart POST /v1/medias returned ${res.status}: ${text}`);
+      }
+      const data = await res.json();
+      return { id: data.id, releaseJson: data.release_json ?? null };
+    }
+  }
+});
+
+// dist/lib/directUpload.js
+var require_directUpload = __commonJS({
+  "dist/lib/directUpload.js"(exports2) {
+    "use strict";
+    Object.defineProperty(exports2, "__esModule", { value: true });
+    exports2.directUpload = directUpload;
+    async function directUpload(params) {
+      const fetcher = params.fetcher ?? fetch;
+      const res = await fetcher("https://api.surecart.com/v1/direct_upload/private", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${params.apiToken}`,
+          "Content-Type": "application/json",
+          Accept: "application/json"
+        },
+        body: JSON.stringify({
+          blob: {
+            filename: params.filename,
+            content_type: params.contentType,
+            byte_size: params.byteSize,
+            checksum: params.checksum
+          }
+        })
+      });
+      if (!res.ok) {
+        const body = await res.text();
+        throw new Error(`SureCart POST /v1/direct_upload/private returned ${res.status}: ${body}`);
+      }
+      const data = await res.json();
+      return {
+        signedId: data.signed_id,
+        uploadUrl: data.direct_upload.url,
+        headers: data.direct_upload.headers
+      };
+    }
+  }
+});
+
+// dist/lib/md5Base64File.js
+var require_md5Base64File = __commonJS({
+  "dist/lib/md5Base64File.js"(exports2) {
+    "use strict";
+    Object.defineProperty(exports2, "__esModule", { value: true });
+    exports2.md5Base64File = md5Base64File;
+    var node_crypto_1 = require("node:crypto");
+    var node_fs_1 = require("node:fs");
+    async function md5Base64File(path) {
+      const hash = (0, node_crypto_1.createHash)("md5");
+      const stream = (0, node_fs_1.createReadStream)(path);
+      for await (const chunk of stream) {
+        hash.update(chunk);
+      }
+      return hash.digest("base64");
+    }
+  }
+});
+
+// dist/lib/pollMediaRelease.js
+var require_pollMediaRelease = __commonJS({
+  "dist/lib/pollMediaRelease.js"(exports2) {
+    "use strict";
+    Object.defineProperty(exports2, "__esModule", { value: true });
+    exports2.pollMediaRelease = pollMediaRelease;
+    var defaultSleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+    async function pollMediaRelease(params) {
+      const fetcher = params.fetcher ?? fetch;
+      const sleep = params.sleep ?? defaultSleep;
+      const attempts = Math.max(1, Math.floor(params.timeoutSeconds / params.intervalSeconds) + 1);
+      for (let i = 0; i < attempts; i++) {
+        const res = await fetcher(`https://api.surecart.com/v1/medias/${params.mediaId}`, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${params.apiToken}`,
+            Accept: "application/json"
+          }
+        });
+        if (!res.ok) {
+          const text = await res.text().catch(() => "");
+          throw new Error(`SureCart GET /v1/medias/${params.mediaId} returned ${res.status}: ${text}`);
+        }
+        const data = await res.json();
+        if (data.release_json?.version) {
+          return data.release_json;
+        }
+        if (i < attempts - 1) {
+          await sleep(params.intervalSeconds * 1e3);
+        }
+      }
+      throw new Error(`Timed out after ${params.timeoutSeconds}s waiting for release_json.version on media ${params.mediaId}`);
+    }
+  }
+});
+
+// dist/lib/putToStorage.js
+var require_putToStorage = __commonJS({
+  "dist/lib/putToStorage.js"(exports2) {
+    "use strict";
+    Object.defineProperty(exports2, "__esModule", { value: true });
+    exports2.putToStorage = putToStorage;
+    var promises_1 = require("node:fs/promises");
+    async function putToStorage(params) {
+      const fetcher = params.fetcher ?? fetch;
+      const body = await (0, promises_1.readFile)(params.localPath);
+      const res = await fetcher(params.uploadUrl, {
+        method: "PUT",
+        headers: params.headers,
+        body
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(`Storage PUT to presigned URL returned ${res.status}: ${text}`);
+      }
+    }
+  }
+});
+
+// dist/lib/runV3Mode.js
+var require_runV3Mode = __commonJS({
+  "dist/lib/runV3Mode.js"(exports2) {
+    "use strict";
+    var __createBinding3 = exports2 && exports2.__createBinding || (Object.create ? (function(o, m, k, k2) {
+      if (k2 === void 0) k2 = k;
+      var desc = Object.getOwnPropertyDescriptor(m, k);
+      if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+        desc = { enumerable: true, get: function() {
+          return m[k];
+        } };
+      }
+      Object.defineProperty(o, k2, desc);
+    }) : (function(o, m, k, k2) {
+      if (k2 === void 0) k2 = k;
+      o[k2] = m[k];
+    }));
+    var __setModuleDefault2 = exports2 && exports2.__setModuleDefault || (Object.create ? (function(o, v) {
+      Object.defineProperty(o, "default", { enumerable: true, value: v });
+    }) : function(o, v) {
+      o["default"] = v;
+    });
+    var __importStar3 = exports2 && exports2.__importStar || /* @__PURE__ */ (function() {
+      var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function(o2) {
+          var ar = [];
+          for (var k in o2) if (Object.prototype.hasOwnProperty.call(o2, k)) ar[ar.length] = k;
+          return ar;
+        };
+        return ownKeys(o);
+      };
+      return function(mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) {
+          for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding3(result, mod, k[i]);
+        }
+        __setModuleDefault2(result, mod);
+        return result;
+      };
+    })();
+    Object.defineProperty(exports2, "__esModule", { value: true });
+    exports2.runV3Mode = runV3Mode;
+    var core2 = __importStar3(require_core());
+    var node_path_1 = require("node:path");
+    var node_os_1 = require("node:os");
+    var node_fs_1 = require("node:fs");
+    var assetNameMatcher_1 = require_assetNameMatcher();
+    var createDownload_1 = require_createDownload();
+    var createMedia_1 = require_createMedia();
+    var directUpload_1 = require_directUpload();
+    var downloadAsset_1 = require_downloadAsset();
+    var findReleaseAssets_1 = require_findReleaseAssets();
+    var md5Base64File_1 = require_md5Base64File();
+    var pollMediaRelease_1 = require_pollMediaRelease();
+    var putToStorage_1 = require_putToStorage();
+    var resolveTag_1 = require_resolveTag();
+    var setCurrentRelease_1 = require_setCurrentRelease();
+    async function runV3Mode(params) {
+      const tag = await (0, resolveTag_1.resolveTag)(params.releaseTag, params.repo, params.githubToken);
+      core2.info(`Resolved tag: ${tag}`);
+      const assets = await (0, findReleaseAssets_1.findReleaseAssets)(tag, params.repo, params.githubToken, params.assetPattern);
+      core2.info(`Matched ${assets.length} asset(s): ${assets.map((a) => a.name).join(", ")}`);
+      const uploaded = [];
+      for (const asset of assets) {
+        const tmpPath = (0, node_path_1.join)((0, node_os_1.tmpdir)(), asset.name);
+        if (params.dryRun) {
+          core2.info(`[DRY-RUN] would download ${asset.name} (${asset.size} bytes) from GitHub`);
+          core2.info(`[DRY-RUN] would POST /v1/direct_upload/private + PUT to SureCart storage`);
+          core2.info(`[DRY-RUN] would POST /v1/medias and poll for release_json.version`);
+          uploaded.push({ name: asset.name, mediaId: "<dry-run>", version: "<dry-run>" });
+          continue;
+        }
+        core2.info(`Downloading ${asset.name} (${asset.size} bytes)...`);
+        await (0, downloadAsset_1.downloadAsset)(asset.downloadUrl, params.githubToken, tmpPath);
+        const checksum = await (0, md5Base64File_1.md5Base64File)(tmpPath);
+        const byteSize = (0, node_fs_1.statSync)(tmpPath).size;
+        core2.info(`Reserving direct-upload blob for ${asset.name}...`);
+        const { signedId, uploadUrl, headers } = await (0, directUpload_1.directUpload)({
+          filename: asset.name,
+          contentType: "application/zip",
+          byteSize,
+          checksum,
+          apiToken: params.apiToken
+        });
+        core2.info(`Uploading ${asset.name} to SureCart storage...`);
+        await (0, putToStorage_1.putToStorage)({ uploadUrl, headers, localPath: tmpPath });
+        core2.info(`Creating media for ${asset.name}...`);
+        const media = await (0, createMedia_1.createMedia)({ signedId, apiToken: params.apiToken });
+        core2.info(`Waiting for SureCart to recognise the version for ${asset.name}...`);
+        const release = await (0, pollMediaRelease_1.pollMediaRelease)({
+          mediaId: media.id,
+          apiToken: params.apiToken,
+          timeoutSeconds: params.ingestTimeoutSeconds,
+          intervalSeconds: params.ingestPollIntervalSeconds
+        });
+        const version = String(release.version);
+        core2.info(`Media ${media.id} ingested \u2014 version ${version}`);
+        if (params.expectedVersion && version !== params.expectedVersion) {
+          throw new Error(`Version mismatch for ${asset.name}: SureCart parsed "${version}" but expected_version is "${params.expectedVersion}". Aborting \u2014 refusing to publish a release whose parsed version does not match.`);
+        }
+        uploaded.push({ name: asset.name, mediaId: media.id, version });
+        try {
+          (0, node_fs_1.unlinkSync)(tmpPath);
+        } catch {
+        }
+      }
+      const downloadIds = [];
+      const mediaIds = uploaded.map((u) => u.mediaId);
+      const currentReleaseByProduct = {};
+      let anyDuplicate = false;
+      for (const productUuid of params.productUuids) {
+        core2.info(`--- Product ${productUuid} ---`);
+        let firstAssetMatched = false;
+        for (const media of uploaded) {
+          if (params.dryRun) {
+            core2.info(`[DRY-RUN] POST /v1/downloads {download: {product:"${productUuid}", media_id:"${media.mediaId}"}}`);
+            continue;
+          }
+          const result = await (0, createDownload_1.createDownload)({
+            productUuid,
+            mediaId: media.mediaId,
+            apiToken: params.apiToken,
+            behavior: params.duplicateBehavior
+          });
+          if (result.isDuplicate)
+            anyDuplicate = true;
+          if (result.id) {
+            downloadIds.push(result.id);
+            core2.info(`Download ${result.id} for ${media.name} (v${media.version}) ${result.isDuplicate ? "(existing \u2014 duplicate media)" : "created"}`);
+            const matchesCurrent = params.currentReleaseAssetPattern ? (0, assetNameMatcher_1.matchesGlob)(media.name, params.currentReleaseAssetPattern) : !firstAssetMatched;
+            if (matchesCurrent && !currentReleaseByProduct[productUuid]) {
+              currentReleaseByProduct[productUuid] = result.id;
+            }
+            firstAssetMatched = true;
+          } else {
+            core2.warning(`Duplicate media on ${media.name} for product ${productUuid} and no existing download_id surfaced.`);
+          }
+        }
+      }
+      if (params.setAsCurrentRelease) {
+        if (params.dryRun) {
+          core2.info(`[DRY-RUN] would PATCH current_release_download on ${params.productUuids.length} product(s)`);
+        } else {
+          for (const [productUuid, downloadId] of Object.entries(currentReleaseByProduct)) {
+            await (0, setCurrentRelease_1.setCurrentRelease)({
+              productUuid,
+              downloadId,
+              apiToken: params.apiToken
+            });
+            core2.info(`Set ${downloadId} as current_release_download on ${productUuid}`);
+          }
+        }
+      }
+      return {
+        downloadIds,
+        publicUrls: [],
+        objectKeys: [],
+        mediaIds,
+        actionTaken: params.dryRun ? "skipped" : anyDuplicate ? "partial" : "created"
+      };
+    }
+  }
+});
+
 // dist/index.js
 var __createBinding2 = exports && exports.__createBinding || (Object.create ? (function(o, m, k, k2) {
   if (k2 === void 0) k2 = k;
@@ -57455,6 +57763,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var core = __importStar2(require_core());
 var runV1Mode_1 = require_runV1Mode();
 var runV2Mode_1 = require_runV2Mode();
+var runV3Mode_1 = require_runV3Mode();
 function parseCsv(s) {
   return s.split(",").map((x) => x.trim()).filter((x) => x.length > 0);
 }
@@ -57463,6 +57772,23 @@ function getBoolInput(name, fallback = false) {
   if (!raw)
     return fallback;
   return raw === "true" || raw === "True" || raw === "TRUE";
+}
+function getNumberInput(name, fallback) {
+  const raw = core.getInput(name);
+  if (!raw)
+    return fallback;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n <= 0) {
+    throw new Error(`Input '${name}' must be a positive number, got '${raw}'.`);
+  }
+  return n;
+}
+function getUploadTarget() {
+  const raw = (core.getInput("upload_target") || "r2").trim().toLowerCase();
+  if (raw !== "r2" && raw !== "surecart") {
+    throw new Error(`Input 'upload_target' must be 'r2' or 'surecart', got '${raw}'.`);
+  }
+  return raw;
 }
 function getBehavior() {
   const legacy = core.getInput("duplicate_media_behavior");
@@ -57486,11 +57812,13 @@ async function main() {
     throw new Error("Input 'product_uuids' is required (CSV of product UUIDs).");
   }
   let result;
+  let modeLabel;
   if (mediaUuid && releaseTag) {
     throw new Error("Pass exactly one of 'media_uuid' (v1 mode) or 'release_tag' (v2 mode), not both.");
   }
   if (mediaUuid) {
     core.info("Running in v1 mode (media_uuid).");
+    modeLabel = "v1 (media_uuid)";
     result = await (0, runV1Mode_1.runV1Mode)({
       mediaUuid,
       productUuids,
@@ -57500,34 +57828,57 @@ async function main() {
       dryRun
     });
   } else if (releaseTag) {
-    core.info("Running in v2 mode (release_tag + R2 upload).");
     const repo = process.env.GITHUB_REPOSITORY;
     if (!repo)
       throw new Error("GITHUB_REPOSITORY env var is not set.");
-    result = await (0, runV2Mode_1.runV2Mode)({
-      releaseTag,
-      repo,
-      githubToken: core.getInput("github_token", { required: true }),
-      assetPattern: core.getInput("asset_pattern") || "*.zip",
-      currentReleaseAssetPattern: core.getInput("current_release_asset_pattern"),
-      objectKeyPrefix: core.getInput("object_key_prefix") || "releases",
-      productUuids,
-      setAsCurrentRelease,
-      duplicateBehavior: behavior,
-      apiToken,
-      r2AccountId: core.getInput("r2_account_id", { required: true }),
-      r2AccessKeyId: core.getInput("r2_access_key_id", { required: true }),
-      r2SecretAccessKey: core.getInput("r2_secret_access_key", { required: true }),
-      r2Bucket: core.getInput("r2_bucket", { required: true }),
-      r2PublicBaseUrl: core.getInput("r2_public_base_url", { required: true }),
-      dryRun
-    });
+    const uploadTarget = getUploadTarget();
+    if (uploadTarget === "surecart") {
+      core.info("Running in v3 mode (release_tag \u2192 upload to SureCart).");
+      modeLabel = "v3 (release_tag \u2192 SureCart)";
+      result = await (0, runV3Mode_1.runV3Mode)({
+        releaseTag,
+        repo,
+        githubToken: core.getInput("github_token", { required: true }),
+        assetPattern: core.getInput("asset_pattern") || "*.zip",
+        currentReleaseAssetPattern: core.getInput("current_release_asset_pattern"),
+        productUuids,
+        setAsCurrentRelease,
+        duplicateBehavior: behavior,
+        apiToken,
+        ingestTimeoutSeconds: getNumberInput("release_ingest_timeout_seconds", 30),
+        ingestPollIntervalSeconds: getNumberInput("release_ingest_poll_interval_seconds", 2),
+        expectedVersion: core.getInput("expected_version"),
+        dryRun
+      });
+    } else {
+      core.info("Running in v2 mode (release_tag + R2 upload).");
+      modeLabel = "v2 (release_tag + R2)";
+      result = await (0, runV2Mode_1.runV2Mode)({
+        releaseTag,
+        repo,
+        githubToken: core.getInput("github_token", { required: true }),
+        assetPattern: core.getInput("asset_pattern") || "*.zip",
+        currentReleaseAssetPattern: core.getInput("current_release_asset_pattern"),
+        objectKeyPrefix: core.getInput("object_key_prefix") || "releases",
+        productUuids,
+        setAsCurrentRelease,
+        duplicateBehavior: behavior,
+        apiToken,
+        r2AccountId: core.getInput("r2_account_id", { required: true }),
+        r2AccessKeyId: core.getInput("r2_access_key_id", { required: true }),
+        r2SecretAccessKey: core.getInput("r2_secret_access_key", { required: true }),
+        r2Bucket: core.getInput("r2_bucket", { required: true }),
+        r2PublicBaseUrl: core.getInput("r2_public_base_url", { required: true }),
+        dryRun
+      });
+    }
   } else {
-    throw new Error("Pass either 'media_uuid' (v1 mode) or 'release_tag' (v2 mode).");
+    throw new Error("Pass either 'media_uuid' (v1 mode) or 'release_tag' (v2/v3 mode).");
   }
   core.setOutput("download_ids", result.downloadIds.join(","));
   core.setOutput("public_urls", result.publicUrls.join(","));
   core.setOutput("object_keys", result.objectKeys.join(","));
+  core.setOutput("media_ids", (result.mediaIds ?? []).join(","));
   core.setOutput("action_taken", result.actionTaken);
   const summary = process.env.GITHUB_STEP_SUMMARY;
   if (summary) {
@@ -57535,10 +57886,13 @@ async function main() {
     const lines = [
       `### Deploy to SureCart \u2014 ${result.actionTaken}`,
       "",
-      `**Mode:** ${mediaUuid ? "v1 (media_uuid)" : "v2 (release_tag + R2)"}`,
+      `**Mode:** ${modeLabel}`,
       `**Products:** ${productUuids.length}`,
       `**Downloads created/found:** ${result.downloadIds.length}`
     ];
+    if (result.mediaIds && result.mediaIds.length > 0) {
+      lines.push(`**Media uploaded:** ${result.mediaIds.length}`);
+    }
     if (result.publicUrls.length > 0) {
       lines.push("", "**Public URLs:**");
       for (const u of result.publicUrls)
