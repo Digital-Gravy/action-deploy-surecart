@@ -106,5 +106,5 @@ outputs:
     description: 'One of "created", "partial" (some duplicates surfaced), or "skipped" (dry-run).'
 
 runs:
-  using: 'node20'
+  using: 'node24'
   main: 'dist/index.js'

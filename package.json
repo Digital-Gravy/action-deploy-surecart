@@ -4,7 +4,7 @@
   "description": "GitHub Action that deploys a release to SureCart. v1 mode: attach existing media to products. v2 mode: pull a release asset from GitHub, upload to Cloudflare R2, attach the external URL to products.",
   "main": "src/index.ts",
   "scripts": {
-    "build": "tsc && esbuild dist/index.js --bundle --platform=node --target=node20 --outfile=dist/index.js --conditions=import --format=cjs --allow-overwrite",
+    "build": "tsc && esbuild dist/index.js --bundle --platform=node --target=node24 --outfile=dist/index.js --conditions=import --format=cjs --allow-overwrite",
     "test": "jest",
     "test:watch": "jest --watch",
     "lint": "eslint . --ext .ts",
