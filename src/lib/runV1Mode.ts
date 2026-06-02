@@ -15,6 +15,7 @@ export type RunResult = {
   downloadIds: string[];
   publicUrls: string[];
   objectKeys: string[];
+  mediaIds?: string[];
   actionTaken: 'created' | 'partial' | 'skipped';
 };
 
